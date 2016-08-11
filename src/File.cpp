@@ -3,11 +3,11 @@
 #include <fstream>
 #include <algorithm>
 #include <cmath>
-
+#include <cstdlib>
 
 mp::File::File() :
-file_existing(false), 
-file_correct(false)
+is_read(false), 
+is_correct(false)
 {
 
 }
@@ -19,14 +19,14 @@ mp::File::File(const std::string& filename)
 
 void mp::File::open(const std::string& filename)
 {
-	file_existing = true;
-	file_correct = true;
+	is_read = true;
+	is_correct = true;
 
 	std::ifstream midi_file(filename, std::ios::binary);
 	if (!midi_file.is_open())
 	{
-		file_existing = false;
-		file_correct = false;
+		is_read = false;
+		is_correct = false;
 		return;
 	}
 	
@@ -35,7 +35,7 @@ void mp::File::open(const std::string& filename)
 
 	if (header_chunk_signature != "MThd")
 	{
-		file_correct = false;
+		is_correct = false;
 		return;
 	}
 
@@ -43,8 +43,8 @@ void mp::File::open(const std::string& filename)
 	midi_file.read(reinterpret_cast<char*>(&header_chunk_data_length), 4);
 	header_chunk_data_length = changeEndian<unsigned int>(header_chunk_data_length);
 
-	midi_file.read(reinterpret_cast<char*>(&midi_file_format), 2);
-	midi_file_format = changeEndian<short>(midi_file_format);
+	midi_file.read(reinterpret_cast<char*>(&format), 2);
+	format = changeEndian<short>(format);
 
 	midi_file.read(reinterpret_cast<char*>(&tracks_quantity), 2);
 	tracks_quantity = changeEndian<unsigned short>(tracks_quantity);
@@ -52,21 +52,20 @@ void mp::File::open(const std::string& filename)
 	short division;
 	midi_file.read(reinterpret_cast<char*>(&division), 2);
 	division = changeEndian<short>(division);
-	
+
 	if (division >> 15 == 0)
 	{
 		ticks_per_quater_note = division;
-		division_type = 0;
+		smpte_type = false;
 	}
 	else
 	{
-		smtpe_byte[0] = division & 0xFF;
+		smpte_byte[0] = division & 0xFF;
 		division >>= 8;
-		smtpe_byte[1] = abs(division);
-		division_type = 1;
+		smpte_byte[1] = abs(division);
+		smpte_type = true;
 	}
 	
-
 	for (int i = 0; i < tracks_quantity; i++)
 	{
 		// ...
@@ -75,58 +74,72 @@ void mp::File::open(const std::string& filename)
 
 void mp::File::close()
 {
-	file_existing = false;
-	file_correct = false;	
+	is_read = false;
+	is_correct = false;	
 }
 
 bool mp::File::isGood() const
 {
-	return file_existing && file_correct;
+	return is_read && is_correct;
 }
 
-bool mp::File::isExisting() const
+bool mp::File::isRead() const
 {
-	return file_existing;
+	return is_read;
 }
 
 bool mp::File::isCorrect() const
 {
-	return file_correct;
+	return is_correct;
 }
 
-
-short mp::File::getMidiFileFormat() const
+short mp::File::getFormat() const
 {
-	return midi_file_format;
+	if (is_read && is_correct)
+		return format;
+	else
+		abort();
 }
 
 unsigned short mp::File::getTracksQuantity() const
 {
-	return tracks_quantity;
-}
-
-
-
-bool mp::File::getDivisionType() const
-{
-	return division_type;
+	if (is_read && is_correct)
+		return tracks_quantity;
+	else
+		abort();
 }
 
 short mp::File::getTicksPerQuaterNote() const
 {
-	return ticks_per_quater_note;
+	if (is_read && is_correct)
+		return ticks_per_quater_note;
+	else
+		abort();
 }
 
 short mp::File::getTicksPerFrame() const
 {
-	return static_cast<short>(smtpe_byte[0]);
+	if (is_read && is_correct)
+		return static_cast<short>(smpte_byte[0]);
+	else
+		abort();
 }
 
 short mp::File::getFramesPerSecond() const
 {
-	return static_cast<short>(smtpe_byte[1]);
+	if (is_read && is_correct)
+		return static_cast<short>(smpte_byte[1]);
+	else
+		abort();
 }
 
+bool mp::File::isSmpteType() const
+{
+	if (is_read && is_correct)
+		return smpte_type;
+	else
+		abort();
+}
 
 template<typename T>
 T mp::File::changeEndian(T value)
@@ -138,8 +151,7 @@ T mp::File::changeEndian(T value)
 	} conversion;
 
 	conversion.as_number = value;
-	std::reverse(conversion.as_bytes_array, conversion.as_bytes_array + sizeof (T));
+	std::reverse(conversion.as_bytes_array, conversion.as_bytes_array + sizeof(T));
 
 	return conversion.as_number;
 }
-

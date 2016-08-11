@@ -12,37 +12,39 @@ public:
 	File();
 	File(const std::string& filename);
 	
-	void 		open(const std::string& filename);
-	void 		close();
+	void           open(const std::string& filename);
+	void           close();
 
-	bool 		isGood()		const;
-	bool 		isExisting() 		const;
-	bool 		isCorrect() 		const;
+	bool           isGood()                const;
+	bool           isRead()                const;
+	bool           isCorrect()             const;
 
-	short  		getMidiFileFormat() 	const;
-	unsigned short	getTracksQuantity() 	const;
+	short          getFormat()             const;
+	unsigned short getTracksQuantity()     const;
 
+	short          getTicksPerQuaterNote() const;
+	short          getTicksPerFrame()      const;
+	short          getFramesPerSecond()    const;
 
-	bool  		getDivisionType()	const;
-	short 		getTicksPerQuaterNote() const;
-	short 		getTicksPerFrame() 	const;
-	short 		getFramesPerSecond() 	const;
+	bool           isSmpteType()           const;
 
 private:
-	bool file_existing;
-	bool file_correct;
+	template<typename T>
+	T changeEndian(T value);
 
-	short 	midi_file_format;
-	unsigned short	tracks_quantity;
+	bool           is_read;
+	bool           is_correct;
+
+	short          format;
+	unsigned short tracks_quantity;
+
 	union
 	{
 		short ticks_per_quater_note;
-		char smtpe_byte[2];
+		char  smpte_byte[2];
 	};
-	bool division_type;
-	
-	template<typename T>
-	T changeEndian(T value);
+
+	bool smpte_type;
 };
 
 }
