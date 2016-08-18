@@ -2,6 +2,8 @@
 #define FILE_HPP
 
 #include <string>
+#include <vector>
+#include "Track.hpp"
 
 namespace mp
 {
@@ -13,21 +15,23 @@ public:
 	File(const std::string& filename);
 	
 	void           open(const std::string& filename);
-	void           close();
 
-	bool           isGood()                const;
-	bool           isRead()                const;
-	bool           isCorrect()             const;
+	bool           isGood()                       const;
+	bool           isRead()                       const;
+	bool           isCorrect()                    const;
 
-	short          getFormat()             const;
-	unsigned short getTracksQuantity()     const;
+	short          getFormat()                    const;
+	unsigned short getTracksQuantity()            const;
 
-	short          getTicksPerQuaterNote() const;
-	short          getTicksPerFrame()      const;
-	short          getFramesPerSecond()    const;
+	short          getTicksPerQuaterNote()        const;
+	short          getTicksPerFrame()             const;
+	short          getFramesPerSecond()           const;
 
-	bool           isSmpteType()           const;
+	bool           isSmpteType()                  const;
 
+	const Track    connectTracks()                const;
+
+	const Track&   operator[](unsigned int index) const;
 private:
 	template<typename T>
 	T changeEndian(T value);
@@ -45,6 +49,8 @@ private:
 	};
 
 	bool smpte_type;
+
+	std::vector<Track> tracks;
 };
 
 }

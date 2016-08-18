@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <cassert>
 
 mp::File::File() :
 is_read(false), 
@@ -12,45 +13,71 @@ is_correct(false)
 
 }
 
-mp::File::File(const std::string& filename)
+mp::File::File(const std::string& filename) :
+File()
 {
 	open(filename);
 }
 
 void mp::File::open(const std::string& filename)
 {
-	is_read = true;
-	is_correct = true;
-
-	std::ifstream midi_file(filename, std::ios::binary);
-	if (!midi_file.is_open())
+	if (filename.find(".mid", 0) == std::string::npos && filename.find(".midi", 0) == std::string::npos)
 	{
-		is_read = false;
-		is_correct = false;
 		return;
 	}
-	
+
+	std::ifstream midi_file(filename, std::ios_base::binary);
+	if (!midi_file.is_open())
+	{
+		return;
+	}
+
 	std::string header_chunk_signature(4, '\0');
 	midi_file.read(&header_chunk_signature[0], 4);
 
-	if (header_chunk_signature != "MThd")
+	if (header_chunk_signature != "MThd" || !midi_file.good())
 	{
-		is_correct = false;
+		is_read = true;
+		midi_file.close();
 		return;
 	}
 
 	unsigned int header_chunk_data_length;
 	midi_file.read(reinterpret_cast<char*>(&header_chunk_data_length), 4);
+	if (!midi_file.good())
+	{
+		is_read = true;
+		midi_file.close();
+		return;
+	}
 	header_chunk_data_length = changeEndian<unsigned int>(header_chunk_data_length);
 
 	midi_file.read(reinterpret_cast<char*>(&format), 2);
+	if (!midi_file.good())
+	{
+		is_read = true;
+		midi_file.close();
+		return;
+	}
 	format = changeEndian<short>(format);
 
 	midi_file.read(reinterpret_cast<char*>(&tracks_quantity), 2);
+	if (!midi_file.good())
+	{
+		is_read = true;
+		midi_file.close();
+		return;
+	}
 	tracks_quantity = changeEndian<unsigned short>(tracks_quantity);
 
 	short division;
 	midi_file.read(reinterpret_cast<char*>(&division), 2);
+	if (!midi_file.good())
+	{
+		is_read = true;
+		midi_file.close();
+		return;
+	}
 	division = changeEndian<short>(division);
 
 	if (division >> 15 == 0)
@@ -68,14 +95,35 @@ void mp::File::open(const std::string& filename)
 	
 	for (int i = 0; i < tracks_quantity; i++)
 	{
-		// ...
-	}
-}
+		std::string track_chunk_signature(4, '\0');
+		midi_file.read(&track_chunk_signature[0], 4);
 
-void mp::File::close()
-{
-	is_read = false;
-	is_correct = false;	
+		if (track_chunk_signature != "MTrk" || !midi_file.good())
+		{
+			is_read = true;
+			midi_file.close();
+			return;
+		}
+
+		unsigned int track_chunk_data_length;
+		midi_file.read(reinterpret_cast<char*>(&track_chunk_data_length), 4);
+		if (!midi_file.good())
+		{
+			is_read = true;
+			midi_file.close();
+			return;
+		}
+		track_chunk_data_length = changeEndian<unsigned int>(track_chunk_data_length);
+
+		tracks.push_back(Track());
+
+		/*while(true)
+		{
+			TODO: Loading events from track
+		}*/
+	}
+
+	midi_file.close();
 }
 
 bool mp::File::isGood() const
@@ -95,50 +143,50 @@ bool mp::File::isCorrect() const
 
 short mp::File::getFormat() const
 {
-	if (is_read && is_correct)
-		return format;
-	else
-		abort();
+	assert(is_read && is_correct);
+	return format;
 }
 
 unsigned short mp::File::getTracksQuantity() const
 {
-	if (is_read && is_correct)
-		return tracks_quantity;
-	else
-		abort();
+	assert(is_read && is_correct);
+	return tracks_quantity;
 }
 
 short mp::File::getTicksPerQuaterNote() const
 {
-	if (is_read && is_correct)
-		return ticks_per_quater_note;
-	else
-		abort();
+	assert(is_read && is_correct);
+	return ticks_per_quater_note;
 }
 
 short mp::File::getTicksPerFrame() const
 {
-	if (is_read && is_correct)
-		return static_cast<short>(smpte_byte[0]);
-	else
-		abort();
+	assert(is_read && is_correct);
+	return static_cast<short>(smpte_byte[0]);
 }
 
 short mp::File::getFramesPerSecond() const
 {
-	if (is_read && is_correct)
-		return static_cast<short>(smpte_byte[1]);
-	else
-		abort();
+	assert(is_read && is_correct);
+	return static_cast<short>(smpte_byte[1]);
 }
 
 bool mp::File::isSmpteType() const
 {
-	if (is_read && is_correct)
-		return smpte_type;
-	else
-		abort();
+	assert(is_read && is_correct);
+	return smpte_type;
+}
+
+const mp::Track mp::File::connectTracks() const
+{
+	assert(is_read && is_correct);
+	return Track();
+}
+
+const mp::Track& mp::File::operator[](unsigned int index) const
+{
+	assert(is_read && is_correct);
+	return tracks[index];
 }
 
 template<typename T>
