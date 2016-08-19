@@ -21,7 +21,10 @@ File()
 
 void mp::File::open(const std::string& filename)
 {
-	if (filename.find(".mid", 0) == std::string::npos && filename.find(".midi", 0) == std::string::npos)
+	if (filename.find(".mid", 0) == std::string::npos &&
+		filename.find(".midi", 0) == std::string::npos &&
+		filename.find(".MID", 0) == std::string::npos &&
+		filename.find(".MIDI", 0) == std::string::npos)
 	{
 		return;
 	}
@@ -83,14 +86,14 @@ void mp::File::open(const std::string& filename)
 	if (division >> 15 == 0)
 	{
 		ticks_per_quater_note = division;
-		smpte_type = false;
+		is_smpte_type = false;
 	}
 	else
 	{
 		smpte_byte[0] = division & 0xFF;
 		division >>= 8;
 		smpte_byte[1] = abs(division);
-		smpte_type = true;
+		is_smpte_type = true;
 	}
 	
 	for (int i = 0; i < tracks_quantity; i++)
@@ -155,26 +158,26 @@ unsigned short mp::File::getTracksQuantity() const
 
 short mp::File::getTicksPerQuaterNote() const
 {
-	assert(is_read && is_correct);
+	assert(is_read && is_correct && !is_smpte_type);
 	return ticks_per_quater_note;
 }
 
 short mp::File::getTicksPerFrame() const
 {
-	assert(is_read && is_correct);
+	assert(is_read && is_correct && is_smpte_type);
 	return static_cast<short>(smpte_byte[0]);
 }
 
 short mp::File::getFramesPerSecond() const
 {
-	assert(is_read && is_correct);
+	assert(is_read && is_correct && is_smpte_type);
 	return static_cast<short>(smpte_byte[1]);
 }
 
 bool mp::File::isSmpteType() const
 {
 	assert(is_read && is_correct);
-	return smpte_type;
+	return is_smpte_type;
 }
 
 const mp::Track mp::File::connectTracks() const
@@ -183,14 +186,14 @@ const mp::Track mp::File::connectTracks() const
 	return Track();
 }
 
-const mp::Track& mp::File::operator[](unsigned int index) const
+const mp::Track& mp::File::operator[](const unsigned int index) const
 {
 	assert(is_read && is_correct);
 	return tracks[index];
 }
 
 template<typename T>
-T mp::File::changeEndian(T value)
+T mp::File::changeEndian(const T value)
 {
 	union
 	{

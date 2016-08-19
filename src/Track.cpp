@@ -5,12 +5,12 @@ mp::Track::Track()
 
 }
 
-int mp::Track::getEventsQuantity()
+int mp::Track::getEventsQuantity() const
 {
-	return 0;
+	return events_quantity;
 }
 
-const mp::Event& mp::Track::operator[](unsigned int index)
+const mp::Event& mp::Track::operator[](const int index) const
 {
 	return events[index];
 }

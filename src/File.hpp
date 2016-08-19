@@ -16,25 +16,25 @@ public:
 	
 	void           open(const std::string& filename);
 
-	bool           isGood()                       const;
-	bool           isRead()                       const;
-	bool           isCorrect()                    const;
+	bool           isGood()                             const;
+	bool           isRead()                             const;
+	bool           isCorrect()                          const;
 
-	short          getFormat()                    const;
-	unsigned short getTracksQuantity()            const;
+	short          getFormat()                          const;
+	unsigned short getTracksQuantity()                  const;
 
-	short          getTicksPerQuaterNote()        const;
-	short          getTicksPerFrame()             const;
-	short          getFramesPerSecond()           const;
+	short          getTicksPerQuaterNote()              const;
+	short          getTicksPerFrame()                   const;
+	short          getFramesPerSecond()                 const;
 
-	bool           isSmpteType()                  const;
+	bool           isSmpteType()                        const;
 
-	const Track    connectTracks()                const;
+	const Track    connectTracks()                      const;
 
-	const Track&   operator[](unsigned int index) const;
+	const Track&   operator[](const unsigned int index) const;
 private:
 	template<typename T>
-	T changeEndian(T value);
+	T changeEndian(const T value);
 
 	bool           is_read;
 	bool           is_correct;
@@ -48,7 +48,7 @@ private:
 		char  smpte_byte[2];
 	};
 
-	bool smpte_type;
+	bool               is_smpte_type;
 
 	std::vector<Track> tracks;
 };

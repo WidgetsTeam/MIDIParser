@@ -15,10 +15,12 @@ public:
 
 	Track();
 
-	int getEventsQuantity();
+	int          getEventsQuantity()                  const;
 
-	const Event& operator[](unsigned int index);
+	const Event& operator[](const int index) const;
 private:
+	int                events_quantity;
+
 	std::vector<Event> events;
 };
 
