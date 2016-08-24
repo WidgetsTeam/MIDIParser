@@ -79,6 +79,8 @@ private:
 	long long int     absolute_time_ticks;
 
 	std::vector<char> event_data;
+
+	short			  channel;
 };
 
 }

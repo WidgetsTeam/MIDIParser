@@ -1,6 +1,7 @@
 #include "Track.hpp"
 
-mp::Track::Track()
+mp::Track::Track() :
+events_quantity(0)
 {
 
 }

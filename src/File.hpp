@@ -33,6 +33,8 @@ public:
 
 	const Track&   operator[](const unsigned int index) const;
 private:
+	int readVariableLengthQuantity(std::ifstream& file, unsigned int& bytes_to_read);
+
 	template<typename T>
 	T changeEndian(const T value);
 
