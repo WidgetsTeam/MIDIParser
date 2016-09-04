@@ -2,8 +2,11 @@
 #define FILE_HPP
 
 #include <string>
+#include <fstream>
 #include <vector>
+
 #include "Track.hpp"
+#include "Error.hpp"
 
 namespace mp
 {
@@ -16,30 +19,29 @@ public:
 	
 	void           open(const std::string& filename);
 
-	bool           isGood()                             const;
-	bool           isRead()                             const;
-	bool           isCorrect()                          const;
-
 	short          getFormat()                          const;
 	unsigned short getTracksQuantity()                  const;
 
 	short          getTicksPerQuaterNote()              const;
-	short          getTicksPerFrame()                   const;
 	short          getFramesPerSecond()                 const;
+	short          getTicksPerFrame()                   const;
 
 	bool           isSmpteType()                        const;
 
 	const Track    connectTracks()                      const;
 
-	const Track&   operator[](const unsigned int index) const;
+	const Track&   operator[](const unsigned int index)          const;
 private:
-	int readVariableLengthQuantity(std::ifstream& file, unsigned int& bytes_to_read);
+	void readVariableLengthQuantity(std::ifstream& file, int& value, unsigned int& bytes_to_read);
 
 	template<typename T>
-	T changeEndian(const T value);
+	void readFromFile(std::ifstream& file, T& value, const int quantity = 1);
 
-	bool           is_read;
-	bool           is_correct;
+	template<typename T>
+	void readFromFile(std::ifstream& file, T& value, unsigned int& bytes_to_read, const int quantity = 1);
+
+	template<typename T>
+	void changeEndian(T& value);
 
 	short          format;
 	unsigned short tracks_quantity;

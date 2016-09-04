@@ -6,12 +6,12 @@ mp::Event::Event()
 
 mp::Event::Name mp::Event::getEventName() const
 {
-	return event_name;
+	return name;
 }
 
 mp::Event::Type mp::Event::getEventType() const
 {
-	return event_type;
+	return type;
 }
 
 double mp::Event::getDeltaTimeInMicroseconds() const
@@ -34,12 +34,17 @@ long long int mp::Event::getAbsoluteTimeInTicks() const
 	return absolute_time_ticks;
 }
 
-const std::vector<char>& mp::Event::getData() const
+unsigned int mp::Event::getDataQuantity() const
 {
-	return event_data;
+	return data.size();
 }
 
 int mp::Event::getChannel() const
 {
 	return channel;
+}
+
+char mp::Event::operator[](const unsigned int index) const
+{
+	return data[index];
 }

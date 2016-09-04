@@ -13,13 +13,10 @@ class Track
 public:
 	friend class File;
 
-	Track();
-
 	int          getEventsQuantity()                  const;
 
-	const Event& operator[](const int index) const;
+	const Event& operator[](const unsigned int index) const;
 private:
-	int                events_quantity;
 
 	std::vector<Event> events;
 };
