@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include "Event.hpp"
+#include <MidiParser/Event.hpp>
 
 namespace mp
 {

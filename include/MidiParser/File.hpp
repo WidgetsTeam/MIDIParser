@@ -5,8 +5,8 @@
 #include <fstream>
 #include <vector>
 
-#include "Track.hpp"
-#include "Error.hpp"
+#include <MidiParser/Track.hpp>
+#include <MidiParser/Error.hpp>
 
 namespace mp
 {
@@ -32,13 +32,11 @@ public:
 
 	const Track&   operator[](const unsigned int index)          const;
 private:
-	void readVariableLengthQuantity(std::ifstream& file, int& value, unsigned int& bytes_to_read);
+	std::size_t readVariableLengthQuantity(std::ifstream& file, int& value);
 
+	std::size_t readFromFile(std::ifstream& file, std::string& string, const int quantity = 1);
 	template<typename T>
-	void readFromFile(std::ifstream& file, T& value, const int quantity = 1);
-
-	template<typename T>
-	void readFromFile(std::ifstream& file, T& value, unsigned int& bytes_to_read, const int quantity = 1);
+	std::size_t readFromFile(std::ifstream& file, T& value, const int quantity = 1);
 
 	template<typename T>
 	void changeEndian(T& value);
@@ -49,7 +47,7 @@ private:
 	union
 	{
 		short ticks_per_quater_note;
-		char  smpte_byte[2];
+		unsigned char  smpte_byte[2];
 	};
 
 	bool               is_smpte_type;

@@ -1,4 +1,4 @@
-#include "Track.hpp"
+#include <MidiParser/Track.hpp>
 
 int mp::Track::getEventsQuantity() const
 {

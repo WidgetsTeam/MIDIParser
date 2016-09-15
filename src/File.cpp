@@ -1,4 +1,4 @@
-#include "File.hpp"
+#include <MidiParser/File.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -22,30 +22,26 @@ void mp::File::open(const std::string& filename)
 	if (!midi_file.is_open())
 		throw Error(Error::Unread);
 
-	std::string header_chunk_signature(4, '\0');
-	readFromFile(midi_file, header_chunk_signature[0], 4);
+
+	std::string header_chunk_signature;
+	readFromFile(midi_file, header_chunk_signature, 4);
 
 	if (header_chunk_signature != "MThd")
 		throw Error(Error::Incorrect);
 
 	int header_chunk_data_length;
 	readFromFile(midi_file, header_chunk_data_length, 4);
-	changeEndian(header_chunk_data_length);
 
 	readFromFile(midi_file, format, 2);
-	changeEndian(format);
-
 	if (format < 0 || format > 2)
 		throw Error(Error::Incorrect);
 
 	readFromFile(midi_file, tracks_quantity, 2);
-	changeEndian(tracks_quantity);
 
 	short division;
 	readFromFile(midi_file, division, 2);
-	changeEndian(division);
 
-	if (division >> 15 == 0)
+	if ((division >> 15) == 0) // Checking is 15. bit of division set as 0 (SMPTE type or not)
 	{
 		ticks_per_quater_note = division;
 		is_smpte_type = false;
@@ -58,29 +54,45 @@ void mp::File::open(const std::string& filename)
 		is_smpte_type = true;
 	}
 	
+	unsigned int tempo = 500000; //Default tempo [microseconds / quater note]
+
 	for (int track_number = 0; track_number < tracks_quantity; track_number++)
 	{
-		std::string track_chunk_signature(4, '\0');
-		readFromFile(midi_file, track_chunk_signature[0], 4);
+
+		std::string track_chunk_signature;
+		readFromFile(midi_file, track_chunk_signature, 4);
 
 		if (track_chunk_signature != "MTrk")
 			throw Error(Error::Incorrect);
 
 		unsigned int track_chunk_data_length;
 		readFromFile(midi_file, track_chunk_data_length, 4);
-		changeEndian(track_chunk_data_length);
 
 		Track track;
+		unsigned char status_byte = 0;
+		unsigned long long delta_time_counter = 0;
 
 		for (unsigned int bytes_to_read = track_chunk_data_length; bytes_to_read > 0;) // One course of loop = reading one event
 		{
 			Event event;
 
-			readVariableLengthQuantity(midi_file, event.delta_time_ticks, bytes_to_read);
+			bytes_to_read -= readVariableLengthQuantity(midi_file, event.delta_time_ticks);
 
-			unsigned char status_byte;
-			readFromFile(midi_file, status_byte, bytes_to_read);
+			unsigned char byte;
+			bytes_to_read -= readFromFile(midi_file, byte);
+
+			int difference = 0;
+
+			if (byte >= 0x80)
+				status_byte = byte;
+			else
+				difference = 1;
+
 			event.data.push_back(status_byte);
+
+			if (difference == 1)
+				event.data.push_back(byte);
+
 
 			if (status_byte >= 0x80 && status_byte <= 0xEF) // MIDI Event
 			{
@@ -97,18 +109,14 @@ void mp::File::open(const std::string& filename)
 					case 0xE: event.type = Event::Type::PitchBend;             break;
 				}
 
-				int bytes_to_read_in_midi_event = 2;
-
 				if (event.type == Event::Type::ProgramChange ||
 					event.type == Event::Type::ChannelKeyPressure)
-				{
-						bytes_to_read_in_midi_event = 1;
-				}
+						difference++;
 
-				for (int i = 0; i < bytes_to_read_in_midi_event; i++)
+				for (int i = 0; i < 2 - difference; i++)
 				{
 					char data_byte;
-					readFromFile(midi_file, data_byte, bytes_to_read);
+					bytes_to_read -= readFromFile(midi_file, data_byte);
 					event.data.push_back(data_byte);
 				}
 
@@ -132,12 +140,12 @@ void mp::File::open(const std::string& filename)
 				}
 
 				int sysex_data_length;
-				readVariableLengthQuantity(midi_file, sysex_data_length, bytes_to_read);
+				bytes_to_read -= readVariableLengthQuantity(midi_file, sysex_data_length);
 
 				for (int j = 0; j < sysex_data_length; j++)
 				{
 					char data_byte;
-					readFromFile(midi_file, data_byte, bytes_to_read);
+					bytes_to_read -= readFromFile(midi_file, data_byte);
 					event.data.push_back(data_byte);
 				}
 			}
@@ -146,7 +154,7 @@ void mp::File::open(const std::string& filename)
 				event.name = Event::Name::Metadata;
 
 				char type;
-				readFromFile(midi_file, type, bytes_to_read);
+				bytes_to_read -= readFromFile(midi_file, type);
 
 				event.data.push_back(type);
 
@@ -173,19 +181,31 @@ void mp::File::open(const std::string& filename)
 				}
 
 				int meta_data_length;
-				readVariableLengthQuantity(midi_file, meta_data_length, bytes_to_read);
+				bytes_to_read -= readVariableLengthQuantity(midi_file, meta_data_length);
 
 				for (int i = 0; i < meta_data_length; i++)
 				{
 					char data_byte;
-					readFromFile(midi_file, data_byte, bytes_to_read);
+					bytes_to_read -= readFromFile(midi_file, data_byte);
 					event.data.push_back(data_byte);
+				}
+
+				if (event.type == Event::Type::SetTempo)
+				{
+					std::string tempo_as_string(event.data.begin() + 2, event.data.end());
+					tempo_as_string = '\0' + tempo_as_string;
+					tempo = *reinterpret_cast<int*>(&tempo_as_string[0]);
+					changeEndian(tempo);
 				}
 			}
 			else
 				throw Error(Error::Incorrect);
 
+			event.absolute_time_ticks = delta_time_counter;
+			delta_time_counter += event.delta_time_ticks;
+
 			track.events.push_back(event);
+
 		}
 
 		tracks.push_back(track);
@@ -227,7 +247,22 @@ bool mp::File::isSmpteType() const
 const mp::Track mp::File::connectTracks() const
 {
 	// TODO: Implementation
-	return Track();
+	Track connected_tracks;
+
+	for (int i = 0; i < tracks.size(); i++)
+	{
+		for (int j = 0; j < tracks[i].events.size(); j++)
+		{
+			connected_tracks.events.push_back(tracks[i].events[j]);
+		}
+	}
+
+	std::sort(connected_tracks.events.begin(), connected_tracks.events.end(), [](Event a, Event b)
+	{
+		return a.absolute_time_ticks < b.absolute_time_ticks;
+	});
+
+	return connected_tracks;
 }
 
 const mp::Track& mp::File::operator[](const unsigned int index) const
@@ -235,7 +270,7 @@ const mp::Track& mp::File::operator[](const unsigned int index) const
 	return tracks[index];
 }
 
-void mp::File::readVariableLengthQuantity(std::ifstream& file, int& value, unsigned int& bytes_to_read)
+std::size_t mp::File::readVariableLengthQuantity(std::ifstream& file, int& value)
 {
 	std::vector<char> bytes;
 	char byte;
@@ -243,7 +278,7 @@ void mp::File::readVariableLengthQuantity(std::ifstream& file, int& value, unsig
 
 	do
 	{
-		readFromFile(file, byte, bytes_to_read);
+		readFromFile(file, byte);
 		bytes.push_back(byte);
 
 		bytes_counter++;
@@ -263,27 +298,35 @@ void mp::File::readVariableLengthQuantity(std::ifstream& file, int& value, unsig
 	}
 
 	value = end_value;
+
+	return bytes_counter;
 }
 
-template<typename T>
-void mp::File::readFromFile(std::ifstream& file, T& value, const int quantity)
+std::size_t mp::File::readFromFile(std::ifstream& file, std::string& string, const int quantity)
 {
-	file.read(reinterpret_cast<char*>(&value), quantity);
-	/*
-	for(int i = 0; i < quantity; i++)
-	{
-		std::cout << *(reinterpret_cast<char*>(&value) + i);
-	}
-	*/
+	string.append(quantity, '\0');
+	file.read(&string[0], quantity);
+
 	if (!file.good())
 		throw Error(Error::Incorrect);
+
+	return quantity;
 }
 
 template<typename T>
-void mp::File::readFromFile(std::ifstream& file, T& value, unsigned int& bytes_to_read, const int quantity)
+std::size_t mp::File::readFromFile(std::ifstream& file, T& value, const int quantity)
 {
-	readFromFile(file, value, quantity);
-	bytes_to_read -= quantity; 
+	file.read(reinterpret_cast<char*>(&value), quantity);
+	changeEndian(value);
+	/*for (int i = 0; i < quantity; i++)
+	{
+		std::cout << std::hex << (int)*(reinterpret_cast<unsigned char*>(&value) + i) << " " << std::dec;
+	}*/
+	
+	if (!file.good())
+		throw Error(Error::Incorrect);
+
+	return quantity;
 }
 
 template<typename T>

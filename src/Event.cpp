@@ -1,4 +1,4 @@
-#include "Event.hpp"
+#include <MidiParser/Event.hpp>
 
 mp::Event::Event()
 {
